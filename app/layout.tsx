@@ -1,27 +1,24 @@
-import type { Metadata } from 'next'
-import './globals.css'
-import { Poppins } from 'next/font/google'
+import { Providers } from "./providers"
+import "./globals.css"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: 'SkillSync',
-  description: 'A platform where you exchange skills.',
+  title: "SkillSwap",
+  description: "Peer-to-peer skill exchange platform",
 }
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-poppins',
-})
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en">
-      <body className={poppins.className}>
-        {children}
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
