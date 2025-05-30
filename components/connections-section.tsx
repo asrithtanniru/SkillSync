@@ -134,13 +134,17 @@ export function ConnectionsSection() {
           <Card key={connection.id} className="flex flex-col">
             <CardHeader>
               <div className="flex items-center gap-4">
-                <Avatar>
+                <Avatar className="min-w-0 shrink-0">
                   <AvatarImage src={otherUser.image || undefined} />
                   <AvatarFallback>{otherUser.name?.[0] || "U"}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <CardTitle>{otherUser.name}</CardTitle>
-                  <CardDescription>{otherUser.email}</CardDescription>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-base font-semibold truncate">
+                    {otherUser.name}
+                  </CardTitle>
+                  <CardDescription className="text-sm text-muted-foreground truncate">
+                    {otherUser.email}
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -203,4 +207,4 @@ export function ConnectionsSection() {
       })}
     </div>
   )
-} 
+}
