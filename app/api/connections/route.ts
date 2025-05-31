@@ -178,6 +178,55 @@ export async function PATCH(req: Request) {
       return new NextResponse("Invalid status", { status: 400 })
     }
 
+    // If the connection is being accepted, create a chat room
+    if (status === "accepted") {
+      const existingChatRoom = await prisma.chatRoom.findUnique({
+        where: { connectionId }
+      })
+
+      if (existingChatRoom) {
+        const updatedConnection = await prisma.connection.update({
+          where: { id: connectionId },
+          data: { status },
+          include: {
+            fromUser: true,
+            toUser: true,
+            event: {
+              include: {
+                skill: true
+              }
+            },
+            chatRoom: true
+          }
+        })
+        return NextResponse.json(updatedConnection)
+      }
+
+      const updatedConnection = await prisma.connection.update({
+        where: { id: connectionId },
+        data: {
+          status,
+          chatRoom: {
+            create: {
+              lastMessageAt: new Date()
+            }
+          }
+        },
+        include: {
+          fromUser: true,
+          toUser: true,
+          event: {
+            include: {
+              skill: true
+            }
+          },
+          chatRoom: true
+        }
+      })
+
+      return NextResponse.json(updatedConnection)
+    }
+
     const updatedConnection = await prisma.connection.update({
       where: { id: connectionId },
       data: { status },
@@ -188,7 +237,8 @@ export async function PATCH(req: Request) {
           include: {
             skill: true
           }
-        }
+        },
+        chatRoom: true
       }
     })
 

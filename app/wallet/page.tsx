@@ -18,6 +18,7 @@ import {
   Award,
   Users,
 } from "lucide-react"
+import RewardSystem from '@/components/reward-system'
 
 export default function WalletPage() {
   const [isConnected, setIsConnected] = useState(false)
@@ -96,6 +97,15 @@ export default function WalletPage() {
     navigator.clipboard.writeText(walletAddress)
   }
 
+  // Add a sample session data for testing
+  const sampleSession = {
+    id: "session123",
+    teacherAddress: "0x742d35Cc6634C0532925a3b8D4C9db4C4C4C4C4C",
+    learnerAddress: "0x1234567890123456789012345678901234567890",
+    duration: 120, // 2 hours in minutes
+    subject: "React Development"
+  };
+
   return (
     <div className="min-h-screen bg-[#F0E9D2]">
       <Header />
@@ -156,7 +166,7 @@ export default function WalletPage() {
         </div>
 
         <Tabs defaultValue="transactions" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white border border-[#E6DDC4]">
+          <TabsList className="grid w-full grid-cols-4 bg-white border border-[#E6DDC4]">
             <TabsTrigger
               value="transactions"
               className="data-[state=active]:bg-[#678983] data-[state=active]:text-white"
@@ -171,6 +181,9 @@ export default function WalletPage() {
             </TabsTrigger>
             <TabsTrigger value="rewards" className="data-[state=active]:bg-[#678983] data-[state=active]:text-white">
               Earn Rewards
+            </TabsTrigger>
+            <TabsTrigger value="session-reviews" className="data-[state=active]:bg-[#678983] data-[state=active]:text-white">
+              Session Reviews
             </TabsTrigger>
           </TabsList>
 
@@ -263,12 +276,12 @@ export default function WalletPage() {
                       <div className="flex items-center space-x-4">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${user.rank === 1
-                              ? "bg-yellow-100 text-yellow-800"
-                              : user.rank === 2
-                                ? "bg-gray-100 text-gray-800"
-                                : user.rank === 3
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-[#F0E9D2] text-[#181D31]"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : user.rank === 2
+                              ? "bg-gray-100 text-gray-800"
+                              : user.rank === 3
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-[#F0E9D2] text-[#181D31]"
                             }`}
                         >
                           #{user.rank}
@@ -388,6 +401,18 @@ export default function WalletPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="session-reviews" className="space-y-6">
+            <Card className="bg-white border-[#E6DDC4]">
+              <CardHeader>
+                <CardTitle className="text-[#181D31]">Session Reviews</CardTitle>
+                <CardDescription>Review your completed sessions and earn rewards</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RewardSystem sessionData={sampleSession} />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

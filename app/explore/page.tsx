@@ -72,9 +72,32 @@ export default function ExplorePage() {
         }
 
         const data = await response.json()
-        setEvents(data)
+        // Transform the data to match the Event interface
+        const transformedEvents = data.map((event: any) => ({
+          id: event.id,
+          type: event.type,
+          skill: {
+            name: event.skill.name
+          },
+          description: event.description,
+          date: new Date(event.date),
+          time: event.time,
+          duration: event.duration,
+          level: event.level,
+          isRelevant: event.isRelevant || false,
+          user: {
+            name: event.user.name || "Unknown User",
+            image: event.user.image,
+            location: event.user.location || "Unknown Location",
+            id: event.user.id
+          }
+        }))
+        setEvents(transformedEvents)
       } catch (error) {
         console.error("Error fetching events:", error)
+        toast.error("Failed to load events", {
+          description: "Please try refreshing the page"
+        })
       } finally {
         setIsLoading(false)
       }
@@ -180,7 +203,8 @@ export default function ExplorePage() {
         }),
       })
 
-      const data = await res.json()
+      const contentType = res.headers.get("content-type")
+      let errorMessage = "Failed to send request"
 
       if (res.ok) {
         setConnectionStatus((prev) => ({ ...prev, [selectedEventId]: "success" }))
@@ -193,12 +217,20 @@ export default function ExplorePage() {
         })
         setIsMessageDialogOpen(false)
       } else {
+        if (contentType?.includes("application/json")) {
+          const data = await res.json()
+          errorMessage = data.message || data.error || data
+        } else {
+          errorMessage = await res.text()
+        }
+        console.error("Server error:", errorMessage)
         setConnectionStatus((prev) => ({ ...prev, [selectedEventId]: "error" }))
         toast.error("Failed to send request", {
-          description: data || "Please try again later"
+          description: errorMessage
         })
       }
     } catch (e) {
+      console.error("Request error:", e)
       setConnectionStatus((prev) => ({ ...prev, [selectedEventId]: "error" }))
       toast.error("Failed to send request", {
         description: "Please check your internet connection and try again"
@@ -303,7 +335,7 @@ export default function ExplorePage() {
               event={{
                 id: event.id,
                 type: event.type,
-                skill: event.skill.name,
+                skill: event.skill,
                 description: event.description,
                 date: new Date(event.date),
                 time: event.time,
@@ -312,15 +344,15 @@ export default function ExplorePage() {
                 isRelevant: event.isRelevant,
                 user: {
                   name: event.user.name,
-                  avatar: event.user.image,
+                  image: event.user.image,
                   location: event.user.location,
-                  rating: 5.0, // TODO: Add rating to user model
                   id: event.user.id
                 },
               }}
               onConnect={handleConnect}
               onMessage={handleMessage}
               connectionStatus={connectionStatus[event.id]}
+              isCurrentUser={event.user.id === "current-user-id"}
             />
           ))}
         </div>

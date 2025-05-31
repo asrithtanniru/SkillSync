@@ -14,6 +14,7 @@ import { Edit3, MapPin, Clock, Star, Award, Users, Calendar, Plus, X, Save, Came
 import { toast } from "sonner"
 
 export default function ProfilePage() {
+  const [userData, setUserData] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [teachingSkills, setTeachingSkills] = useState<string[]>([])
   const [learningSkills, setLearningSkills] = useState<string[]>([])
@@ -30,6 +31,7 @@ export default function ProfilePage() {
       if (!response.ok) throw new Error("Failed to fetch profile")
       const data = await response.json()
 
+      setUserData(data)
       setTeachingSkills(data.teachingSkills.map((skill: { name: string }) => skill.name))
       setLearningSkills(data.learningSkills.map((skill: { name: string }) => skill.name))
       setLoading(false)
@@ -40,42 +42,45 @@ export default function ProfilePage() {
     }
   }
 
-  const saveSkills = async () => {
-    try {
-      const response = await fetch("/api/user/skills", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          teachingSkills,
-          learningSkills
-        })
-      })
+  // Random data for ratings and stats
+  const randomStats = {
+    rating: (Math.random() * 2 + 3).toFixed(1),
+    reviewCount: Math.floor(Math.random() * 100) + 20,
+    totalSessions: Math.floor(Math.random() * 100) + 10,
+    tokensEarned: Math.floor(Math.random() * 2000) + 500,
+    studentsTaught: Math.floor(Math.random() * 50) + 10,
+    skillsMastered: Math.floor(Math.random() * 10) + 5,
+  }
 
-      if (!response.ok) throw new Error("Failed to save skills")
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F0E9D2] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#678983]" />
+      </div>
+    )
+  }
 
-      toast.success("Skills updated successfully")
-      setIsEditing(false)
-    } catch (error) {
-      console.error("Error saving skills:", error)
-      toast.error("Failed to save skills")
-    }
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-[#F0E9D2] flex items-center justify-center">
+        <p className="text-[#181D31]">Failed to load profile</p>
+      </div>
+    )
   }
 
   const userProfile = {
-    name: "Alex Johnson",
-    email: "alex.johnson@email.com",
-    avatar: "/placeholder.svg?height=120&width=120",
-    location: "San Francisco, CA",
-    timezone: "PST (UTC-8)",
-    bio: "Full-stack developer with 5+ years of experience in React, Node.js, and Python. Passionate about teaching and helping others grow in their tech careers. I believe in learning by doing and making complex concepts simple and accessible.",
-    joinDate: "March 2023",
-    rating: 4.9,
-    reviewCount: 127,
-    totalSessions: 89,
-    tokensEarned: 1250,
-    availability: "Weekdays 6-9 PM, Weekends flexible",
+    name: userData.name || "User",
+    email: userData.email,
+    avatar: userData.image || "/placeholder.svg?height=120&width=120",
+    location: userData.location || "Not specified",
+    timezone: userData.timezone || "Not specified",
+    bio: userData.bio || "No bio provided",
+    joinDate: new Date(userData.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    rating: randomStats.rating,
+    reviewCount: randomStats.reviewCount,
+    totalSessions: randomStats.totalSessions,
+    tokensEarned: randomStats.tokensEarned,
+    availability: userData.availability || "Not specified",
   }
 
   const reviews = [
@@ -130,6 +135,29 @@ export default function ProfilePage() {
     }
   }
 
+  const saveSkills = async () => {
+    try {
+      const response = await fetch("/api/user/skills", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          teachingSkills,
+          learningSkills
+        })
+      })
+
+      if (!response.ok) throw new Error("Failed to save skills")
+
+      toast.success("Skills updated successfully")
+      setIsEditing(false)
+    } catch (error) {
+      console.error("Error saving skills:", error)
+      toast.error("Failed to save skills")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F0E9D2]">
       <Header />
@@ -146,7 +174,7 @@ export default function ProfilePage() {
                     <AvatarFallback className="text-2xl">
                       {userProfile.name
                         .split(" ")
-                        .map((n) => n[0])
+                        .map((n: string) => n[0])
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -183,11 +211,11 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <div className="text-2xl font-bold text-[#678983]">{userProfile.totalSessions}</div>
+                    <div className="text-2xl font-bold text-[#678983]">{randomStats.totalSessions}</div>
                     <div className="text-sm text-[#181D31]/70">Sessions</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-[#678983]">{userProfile.tokensEarned}</div>
+                    <div className="text-2xl font-bold text-[#678983]">{randomStats.tokensEarned}</div>
                     <div className="text-sm text-[#181D31]/70">SST Earned</div>
                   </div>
                 </div>
@@ -205,14 +233,14 @@ export default function ProfilePage() {
                     <Users className="w-4 h-4 text-[#678983]" />
                     <span className="text-[#181D31]">Students Taught</span>
                   </div>
-                  <span className="font-semibold text-[#181D31]">45</span>
+                  <span className="font-semibold text-[#181D31]">{randomStats.studentsTaught}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Award className="w-4 h-4 text-[#678983]" />
                     <span className="text-[#181D31]">Skills Mastered</span>
                   </div>
-                  <span className="font-semibold text-[#181D31]">8</span>
+                  <span className="font-semibold text-[#181D31]">{randomStats.skillsMastered}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
