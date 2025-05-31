@@ -70,10 +70,12 @@ model User {
 }
 
 model Skill {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  averageRating Float?   @default(0)
+  ratingCount   Int      @default(0)
 
   // Users who can teach this skill
   teachers User[] @relation("TeachingSkills")
@@ -81,7 +83,9 @@ model Skill {
   learners User[] @relation("LearningSkills")
 
   // Events related to this skill
-  events Event[]
+  events      Event[]
+  // Skill evaluations
+  evaluations SkillEvaluation[]
 }
 
 model Event {
@@ -151,12 +155,37 @@ model Message {
 }
 
 model Review {
+  id               String            @id @default(cuid())
+  sessionId        String
+  userId           String
+  rating           Int
+  feedback         String
+  timestamp        DateTime          @default(now())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  skillEvaluations SkillEvaluation[]
+}
+
+model SkillEvaluation {
   id        String   @id @default(cuid())
-  sessionId String
-  userId    String
-  rating    Int
-  feedback  String
-  timestamp DateTime @default(now())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id])
+  skillId   String
+  skill     Skill    @relation(fields: [skillId], references: [id])
+  rating    Int // 1-5 rating for specific skill
+  feedback  String? // Optional specific feedback for the skill
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([reviewId, skillId])
+}
+
+model TokenReward {
+  id             String   @id @default(cuid())
+  sessionId      String
+  teacherAddress String
+  amount         Int
+  timestamp      DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
