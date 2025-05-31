@@ -11,6 +11,7 @@ import { Header } from "@/components/header"
 import { toast } from "sonner"
 import { MatchesSection } from "@/components/matches-section"
 import { ConnectionsSection } from "@/components/connections-section"
+import WalletConnect from "@/components/wallet-connect"
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview")
@@ -47,6 +48,9 @@ export default function DashboardPage() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-[#181D31] mb-6">Dashboard</h1>
+
+        <WalletConnect />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 bg-white border border-[#E6DDC4]">
             <TabsTrigger value="overview" className="data-[state=active]:bg-[#678983] data-[state=active]:text-white">
@@ -139,7 +143,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Recent Activity */}
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid lg:grid-cols-1 gap-6">
               <Card className="bg-white border-[#E6DDC4]">
                 <CardHeader>
                   <CardTitle className="text-[#181D31]">Recent Matches</CardTitle>

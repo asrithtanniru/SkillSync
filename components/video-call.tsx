@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ZegoUIKitPrebuilt } from "@zegocloud/zego-uikit-prebuilt"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Terminal } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import RewardSystem from './reward-system'
 
 interface VideoCallProps {
   isOpen: boolean
@@ -11,9 +13,17 @@ interface VideoCallProps {
   roomId: string
   userId: string
   userName: string
+  sessionId: string
+  teacherAddress: string
+  learnerAddress: string
+  skills: {
+    id: string
+    name: string
+  }[]
+  connectionMessage?: string
 }
 
-export function VideoCall({ isOpen, onClose, roomId, userId, userName }: VideoCallProps) {
+export function VideoCall({ isOpen, onClose, roomId, userId, userName, sessionId, teacherAddress, learnerAddress, skills, connectionMessage }: VideoCallProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const zegoInstanceRef = useRef<any>(null);
   const [permissionError, setPermissionError] = useState(false);
@@ -21,6 +31,9 @@ export function VideoCall({ isOpen, onClose, roomId, userId, userName }: VideoCa
   const [initError, setInitError] = useState<string | null>(null);
   const [shouldInitialize, setShouldInitialize] = useState(false);
   const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [sessionDuration, setSessionDuration] = useState(0);
+  const [startTime] = useState(Date.now());
 
   // Error boundary for Next.js
   useEffect(() => {
@@ -184,6 +197,35 @@ export function VideoCall({ isOpen, onClose, roomId, userId, userName }: VideoCa
     };
   }, [cleanupZego]);
 
+  useEffect(() => {
+    // Calculate session duration every minute
+    const interval = setInterval(() => {
+      const duration = Math.floor((Date.now() - startTime) / 1000 / 60); // in minutes
+      setSessionDuration(duration);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  const handleEndSession = () => {
+    setSessionEnded(true);
+  };
+
+  const handleReviewSubmit = () => {
+    // Close the modal immediately after review submission
+    onClose();
+  };
+
+  const sessionData = {
+    id: sessionId,
+    teacherAddress,
+    learnerAddress,
+    duration: sessionDuration,
+    subject: "Teaching Session",
+    skills,
+    connectionMessage
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] p-0">
@@ -213,13 +255,39 @@ export function VideoCall({ isOpen, onClose, roomId, userId, userName }: VideoCa
             </Alert>
           </div>
         ) : (
-          <div className="w-full h-[600px] relative">
-            {isInitializing && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#678983]" />
+          <div className="video-call-container">
+            {!sessionEnded ? (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Video Session</h3>
+                    <button
+                      onClick={handleEndSession}
+                      className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                    >
+                      End Session
+                    </button>
+                  </div>
+                  <div id="video-call-container" className="w-full h-[600px] relative">
+                    {isInitializing && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#678983]" />
+                      </div>
+                    )}
+                    <div ref={containerRef} className="w-full h-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="session-complete">
+                <h3 className="text-xl font-semibold mb-4">Session Complete!</h3>
+                <p className="mb-4">Session duration: {sessionDuration} minutes</p>
+                <RewardSystem
+                  sessionData={sessionData}
+                  onReviewSubmit={handleReviewSubmit}
+                />
               </div>
             )}
-            <div ref={containerRef} className="w-full h-full" />
           </div>
         )}
       </DialogContent>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 interface ReviewFormProps {
-  onSubmit: (rating: number, feedback: string) => void;
+  onSubmit: (review: { rating: number; feedback: string }) => void;
 }
 
 export default function ReviewForm({ onSubmit }: ReviewFormProps) {
@@ -10,7 +10,7 @@ export default function ReviewForm({ onSubmit }: ReviewFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(rating, feedback);
+    onSubmit({ rating, feedback });
   };
 
   return (

@@ -103,7 +103,21 @@ export default function WalletPage() {
     teacherAddress: "0x742d35Cc6634C0532925a3b8D4C9db4C4C4C4C4C",
     learnerAddress: "0x1234567890123456789012345678901234567890",
     duration: 120, // 2 hours in minutes
-    subject: "React Development"
+    subject: "React Development",
+    skills: [
+      {
+        id: "skill1",
+        name: "React Hooks"
+      },
+      {
+        id: "skill2",
+        name: "State Management"
+      },
+      {
+        id: "skill3",
+        name: "Component Design"
+      }
+    ]
   };
 
   return (

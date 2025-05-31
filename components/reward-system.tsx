@@ -1,6 +1,21 @@
+"use client"
+
 import { useState } from 'react';
 import { useAddress, useContract, useContractWrite } from "@thirdweb-dev/react";
 import ReviewForm from './review-form';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Star } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
+import SessionHistory from './session-history';
+
+interface Skill {
+  id: string;
+  name: string;
+}
 
 interface SessionData {
   id: string;
@@ -8,121 +23,226 @@ interface SessionData {
   learnerAddress: string;
   duration: number;
   subject: string;
+  skills: Skill[];
+  connectionMessage?: string;
+}
+
+interface Review {
+  rating: number;
+  comment: string;
+  skillRatings: { [key: string]: number };
 }
 
 interface RewardSystemProps {
   sessionData: SessionData;
+  onReviewSubmit?: () => void;
 }
 
-export default function RewardSystem({ sessionData }: RewardSystemProps) {
-  const address = useAddress();
-  const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS;
-  const { contract } = useContract(CONTRACT_ADDRESS);
-  const { mutateAsync: transfer } = useContractWrite(contract, "transfer");
-
+export default function RewardSystem({ sessionData, onReviewSubmit }: RewardSystemProps) {
   const [isRewarding, setIsRewarding] = useState(false);
-  const [sessionComplete, setSessionComplete] = useState(false);
-  const [reviews, setReviews] = useState<Record<string, any>>({});
+  const [skillRatings, setSkillRatings] = useState<{ [key: string]: number }>({});
+  const [overallRating, setOverallRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const { toast } = useToast();
 
-  const submitReview = async (rating: number, feedback: string) => {
-    const review = {
-      userId: address,
-      rating,
-      feedback,
-      timestamp: Date.now()
-    };
+  // Calculate tokens based on session duration (2 tokens per minute for demo)
+  const tokensRewarded = Math.floor(sessionData.duration * 2);
 
-    try {
-      // Save to your database
-      const response = await fetch('/api/submit-review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sessionData.id,
-          review
-        })
+  const handleSkillRating = (skillId: string, rating: number) => {
+    setSkillRatings(prev => ({
+      ...prev,
+      [skillId]: rating
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (overallRating === 0) {
+      toast({
+        title: "Rating Required",
+        description: "Please provide an overall rating for the session.",
+        variant: "destructive"
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit review');
-      }
-
-      setReviews(prev => ({ ...prev, [address!]: review }));
-      await checkSessionComplete();
-    } catch (error) {
-      console.error('Error submitting review:', error);
-      alert('Failed to submit review. Please try again.');
+      return;
     }
-  };
 
-  const checkSessionComplete = async () => {
-    try {
-      const response = await fetch(`/api/check-session/${sessionData.id}`);
-      const data = await response.json();
-
-      if (data.bothReviewed && data.averageRating >= 3) {
-        setSessionComplete(true);
-        await rewardTokens();
-      }
-    } catch (error) {
-      console.error('Error checking session:', error);
+    // Check if all skills have been rated
+    const allSkillsRated = sessionData.skills.every(skill => skillRatings[skill.id]);
+    if (!allSkillsRated) {
+      toast({
+        title: "Skill Ratings Required",
+        description: "Please rate all skills taught in the session.",
+        variant: "destructive"
+      });
+      return;
     }
-  };
 
-  const rewardTokens = async () => {
     setIsRewarding(true);
 
     try {
-      const teacherAddress = sessionData.teacherAddress;
-      const sessionHours = Math.floor(sessionData.duration / 60); // Convert minutes to hours
-      const tokensToReward = sessionHours * 1; // 1 token per hour
-
-      // Transfer tokens from your main wallet to teacher
-      await transfer({
-        args: [teacherAddress, tokensToReward.toString()]
-      });
-
-      // Update database
-      await fetch('/api/reward-tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // Submit the review
+      const reviewResponse = await fetch("/api/reviews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           sessionId: sessionData.id,
-          teacherAddress,
-          tokensRewarded: tokensToReward
+          teacherAddress: sessionData.teacherAddress,
+          learnerAddress: sessionData.learnerAddress,
+          rating: overallRating,
+          comment,
+          skillRatings: Object.entries(skillRatings).map(([skillId, rating]) => ({
+            skillId,
+            rating
+          }))
         })
       });
 
-      alert(`🎉 ${tokensToReward} SST tokens rewarded!`);
+      if (!reviewResponse.ok) {
+        const errorData = await reviewResponse.json();
+        throw new Error(errorData.message || "Failed to submit review");
+      }
 
+      // Record the token reward
+      const rewardResponse = await fetch("/api/reward-tokens", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sessionId: sessionData.id,
+          teacherAddress: sessionData.teacherAddress,
+          tokensRewarded
+        })
+      });
+
+      if (!rewardResponse.ok) {
+        const errorData = await rewardResponse.json();
+        throw new Error(errorData.message || "Failed to record token reward");
+      }
+
+      toast({
+        title: "Success",
+        description: `Review submitted and ${tokensRewarded} tokens recorded successfully!`
+      });
+
+      // Call the onReviewSubmit callback if provided
+      if (onReviewSubmit) {
+        onReviewSubmit();
+      }
     } catch (error) {
-      console.error('Reward failed:', error);
-      alert('Failed to reward tokens. Please try again.');
+      console.error("Error submitting review:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit review. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsRewarding(false);
     }
   };
 
-  return (
-    <div className="reward-system bg-gray-50 p-5 rounded-lg my-4">
-      <h3 className="text-xl font-semibold mb-4">Session Complete</h3>
+  if (isSubmitted) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Review Submitted Successfully!</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[#181D31]/80 mb-4">
+              Thank you for your feedback. Your review and token reward have been recorded.
+            </p>
+            <SessionHistory userId={sessionData.learnerAddress} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-      {!sessionComplete ? (
-        <div className="review-section">
-          <h4 className="text-lg mb-2">Rate your learning experience (1-5):</h4>
-          <ReviewForm onSubmit={submitReview} />
-          <p className="text-gray-600 mt-2">⏳ Waiting for both participants to review...</p>
-        </div>
-      ) : (
-        <div className="reward-section">
-          <p className="text-green-600 font-medium">✅ Session verified!</p>
-          {isRewarding ? (
-            <p className="mt-2">🪙 Rewarding tokens...</p>
-          ) : (
-            <p className="mt-2 text-green-600">🎉 Tokens rewarded successfully!</p>
-          )}
-        </div>
-      )}
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Session Review</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Overall Rating */}
+          <div className="space-y-2">
+            <Label>Overall Rating</Label>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <button
+                  key={rating}
+                  onClick={() => setOverallRating(rating)}
+                  className={cn(
+                    "p-2 rounded-full transition-colors",
+                    overallRating >= rating
+                      ? "text-yellow-400"
+                      : "text-gray-300 hover:text-yellow-400"
+                  )}
+                >
+                  <Star className="w-6 h-6 fill-current" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Skill Ratings */}
+          <div className="space-y-4">
+            <Label>Skill Ratings</Label>
+            {sessionData.skills.map((skill) => (
+              <div key={skill.id} className="space-y-2">
+                <Label className="text-sm">{skill.name}</Label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      onClick={() => handleSkillRating(skill.id, rating)}
+                      className={cn(
+                        "p-2 rounded-full transition-colors",
+                        skillRatings[skill.id] >= rating
+                          ? "text-yellow-400"
+                          : "text-gray-300 hover:text-yellow-400"
+                      )}
+                    >
+                      <Star className="w-4 h-4 fill-current" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Comment */}
+          <div className="space-y-2">
+            <Label>Additional Comments</Label>
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Share your experience with this session..."
+              className="min-h-[100px]"
+            />
+          </div>
+
+          {/* Token Reward */}
+          <div className="p-4 bg-green-50 rounded-lg">
+            <h3 className="font-medium text-green-800">Token Reward</h3>
+            <p className="text-green-600">
+              {tokensRewarded} tokens will be recorded for this {sessionData.duration}-minute session
+            </p>
+          </div>
+
+          <Button
+            onClick={handleSubmit}
+            disabled={isRewarding}
+            className="w-full"
+          >
+            {isRewarding ? "Submitting..." : "Submit Review"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

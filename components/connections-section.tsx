@@ -36,6 +36,7 @@ interface Connection {
     id: string
     title: string | null
     skill: {
+      id: string
       name: string
     }
   } | null
@@ -43,6 +44,14 @@ interface Connection {
   chatRoom?: {
     id: string
   }
+  sessionId?: string
+  teacherAddress?: string
+  learnerAddress?: string
+  skills?: {
+    id: string
+    name: string
+  }[]
+  connectionMessage?: string
 }
 
 export function ConnectionsSection() {
@@ -140,9 +149,32 @@ export function ConnectionsSection() {
   }
 
   const handleVideoCall = (connection: Connection) => {
-    setSelectedConnection(connection)
-    setIsVideoCallOpen(true)
-  }
+    // Generate a unique session ID
+    const sessionId = `session_${Date.now()}`;
+
+    // Get the other user's address (this should come from your user data)
+    const otherUserAddress = connection.fromUser.id === connection.currentUserId
+      ? connection.toUser.id
+      : connection.fromUser.id;
+
+    // Get the skills for this connection
+    const skills = connection.event?.skill ? [
+      {
+        id: connection.event.skill.id,
+        name: connection.event.skill.name
+      }
+    ] : [];
+
+    setSelectedConnection({
+      ...connection,
+      sessionId,
+      teacherAddress: connection.fromUser.id === connection.currentUserId ? connection.fromUser.id : connection.toUser.id,
+      learnerAddress: connection.fromUser.id === connection.currentUserId ? connection.toUser.id : connection.fromUser.id,
+      skills,
+      connectionMessage: connection.message || undefined
+    });
+    setIsVideoCallOpen(true);
+  };
 
   if (loading) {
     return (
@@ -281,18 +313,28 @@ export function ConnectionsSection() {
         </DialogContent>
       </Dialog>
 
-      {isVideoCallOpen && selectedConnection && (
-        <VideoCall
-          isOpen={isVideoCallOpen}
-          onClose={() => {
-            setIsVideoCallOpen(false)
-            setSelectedConnection(null)
-          }}
-          roomId={selectedConnection.id}
-          userId={selectedConnection.currentUserId}
-          userName={selectedConnection.fromUser.id === selectedConnection.currentUserId ? selectedConnection.fromUser.name || "User" : selectedConnection.toUser.name || "User"}
-        />
-      )}
+      {/* Video Call Dialog */}
+      <Dialog open={isVideoCallOpen} onOpenChange={setIsVideoCallOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Video Session</DialogTitle>
+          </DialogHeader>
+          {selectedConnection && selectedConnection.sessionId && selectedConnection.teacherAddress && selectedConnection.learnerAddress && selectedConnection.skills && (
+            <VideoCall
+              isOpen={isVideoCallOpen}
+              onClose={() => setIsVideoCallOpen(false)}
+              roomId={`room_${selectedConnection.id}`}
+              userId={selectedConnection.currentUserId}
+              userName={selectedConnection.fromUser.name || 'User'}
+              sessionId={selectedConnection.sessionId}
+              teacherAddress={selectedConnection.teacherAddress}
+              learnerAddress={selectedConnection.learnerAddress}
+              skills={selectedConnection.skills}
+              connectionMessage={selectedConnection.connectionMessage || undefined}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
