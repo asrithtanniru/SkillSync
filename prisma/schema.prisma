@@ -66,6 +66,7 @@ model User {
 
   accounts Account[]
   sessions Session[]
+  Message  Message[]
 }
 
 model Skill {
@@ -117,12 +118,45 @@ model Connection {
   status    String   @default("pending") // pending, accepted, rejected
   message   String?
 
-  fromUser   User    @relation("SentConnections", fields: [fromUserId], references: [id])
+  fromUser   User      @relation("SentConnections", fields: [fromUserId], references: [id])
   fromUserId String
-  toUser     User    @relation("ReceivedConnections", fields: [toUserId], references: [id])
+  toUser     User      @relation("ReceivedConnections", fields: [toUserId], references: [id])
   toUserId   String
-  event      Event?  @relation(fields: [eventId], references: [id])
+  event      Event?    @relation(fields: [eventId], references: [id])
   eventId    String?
+  chatRoom   ChatRoom?
 
   @@unique([fromUserId, toUserId])
+}
+
+model ChatRoom {
+  id            String     @id @default(cuid())
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  connection    Connection @relation(fields: [connectionId], references: [id])
+  connectionId  String     @unique
+  lastMessageAt DateTime   @default(now())
+  messages      Message[]
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  sender     User     @relation(fields: [senderId], references: [id])
+  senderId   String
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+  chatRoomId String
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  rating    Int
+  feedback  String
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
