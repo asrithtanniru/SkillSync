@@ -20,6 +20,9 @@ const nextConfig = {
     optimizeCss: true,
     optimizePackageImports: ['@thirdweb-dev/react', '@thirdweb-dev/sdk'],
   },
+  devIndicators: {
+    buildActivity: false,
+  },
 }
 
 export default nextConfig
